@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS GeoLocation API with Google Maps and/or Leaflet API</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+    <script type="text/javascript" defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+	<script src="../dist/select-location.min.js" defer></script>
+</head>
+<body>
+	<div class="container-xl">
+		<div class="h1 text-center border-bottom">JS SelectLocation using GeoLocation API, Google Maps API and/or Leaflet (OSM) API</div>
+		<div class="row">
+			<div class="col" id="confInput">
+				<form id="formConfig">
+				<h2 class="text-secondary">Configuration</h2>
+				<div class="row rounded gy-4">
+					<div class="col-4">type</div>
+					<div class="col-8">
+						<select id="typeMap" name="type" class="form-select">
+							<option value="gmap-then-osm">gmap-then-osm</option>
+							<option value="gmap">gmap</option>
+							<option value="osm" selected>osm</option>
+						</select>
+					</div>
+					<div class="col-4 gmap d-none">GMapApiKey</div>
+					<div class="col-8 gmap d-none">
+						<input name="GMapApiKey" type="text" class="form-control">
+					</div>
+					<div class="col-4 gmap d-none">GMapID</div>
+					<div class="col-8 gmap d-none">
+						<input name="GMapID" type="text" class="form-control">
+					</div>
+					<div class="col-4">viewCurrentLocation</div>
+					<div class="col-8">
+						<input name="viewCurrentLocation" type="checkbox" class="form-check-input" checked>
+					</div>
+					<div class="col-4">logEnable</div>
+					<div class="col-8">
+						<input name="logEnable" type="checkbox" class="form-check-input" checked>
+					</div>
+					<div class="col-12 text-center">
+						<button id="start" type="submit" class="btn btn-danger">Start Over</button>
+					</div>
+				</div>
+				</form>
+			</div>
+			<div class='col'>
+				<p class="text-primary">Click inside the map to select a location</p>
+				<div id="mapSelect" class="rounded" style="height:350px"></div>
+				<div class="text-center py-2">
+					<button id="cancelBtn1" class="btn btn-secondary">Cancel</button>
+					<button id="confirmBtn1" class="btn btn-primary">Confirm</button>
+					<input type="text" readonly id="latLngSelected" class="form-control mt-2 text-center" placeholder="selected location will put here">
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+<script>
+var selectLocation;
+document.addEventListener('DOMContentLoaded',()=>{
+	openMap();
+	typeMap.addEventListener('change',()=>{
+		confInput.querySelectorAll('.gmap').forEach(e => {
+			if(typeMap.value.startsWith('gmap'))e.classList.remove('d-none');
+			else e.classList.add('d-none');
+		});
+	});
+	formConfig.addEventListener('submit',(e)=>{
+		e.preventDefault();
+		const fd = new FormData(formConfig);
+		if(selectLocation!=null)selectLocation.destroyMap();
+		cancelBtn1.disabled=confirmBtn1.disabled=false;
+		latLngSelected.value='';
+		
+		if(typeMap.value.startsWith('gmap')){
+			if(formConfig.elements['GMapApiKey'].value=='' || formConfig.elements['GMapID'].value==''){
+				alert('Using Google Maps needs API Key & Map ID!');
+				return;
+			}
+		}
+		if(typeof selectlocation !== 'undefined'){
+			selectLocation.destroyMap();
+			selectLocation=null;
+		}
+		openMap();
+	});
+});
+function openMap(){
+	if(typeMap.value.startsWith('gmap') && typeof google==='undefined'){
+		(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src="https://maps."+c+"apis.com/maps/api/js?"+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+		key:formConfig.elements['GMapApiKey'].value,v:"weekly"});
+	}
+		
+	selectLocation = OpenSelectLocation({
+		// type:'gmap',
+		type:formConfig.elements['type'].value,
+		GMapApiKey:formConfig.elements['GMapApiKey'].value,
+		GMapID:formConfig.elements['GMapID'].value,
+		viewCurrentLocation:(formConfig.elements['viewCurrentLocation'].value=='on'),
+		logEnable:(formConfig.elements['logEnable'].value=='on'),
+		container:mapSelect,
+		cancelBtn:document.getElementById('cancelBtn1'),
+		onCancel:()=>{
+			latLngSelected.value='';
+			//remove or modify DOM element
+			mapSelect.innerHTML=""; 
+			mapSelect.classList.add('bg-secondary-subtle');
+		},
+		confirmBtn:document.getElementById('confirmBtn1'),
+		onConfirm:(latLng)=>{
+			//use latlng return value
+			latLngSelected.value=(latLng!=null?latLng.lat+", "+latLng.lng:'');
+			//remove or modify DOM element
+			mapSelect.innerHTML=""; 
+			mapSelect.classList.add('bg-secondary-subtle');
+		},
+		//centerLatLng:{lat:-2.063853799485744,lng:101.39501566528921}, // if not defined, selectedLatLng is used as center.
+		//selectedLatLng:{lat:-2.063853799485744,lng:101.39501566528921}, // if not defined, current location (navigator.geolocation.getCurrentPosition) is used as center.
+	});
+}
+</script>
+</html>
